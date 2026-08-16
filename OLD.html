@@ -230,7 +230,7 @@ function startMatch(humanName, modeKey){
     players: names.map((n,i)=>({
       id:i, name:n, isAI:i!==HUMAN_INDEX, color:SEAT_COLORS[i],
       seguidores: mode.blue, etica: mode.black, hand:[], faceDown:[],
-      flags:{ halfNextCard:false }, bustedOut:false, won:false, lastPlayed:null,
+      flags:{ halfNextCard:false }, bustedOut:false, won:false,
     })),
     deck: buildActionDeck(), discard:[],
     round:0, phase:'PRE', roundLog:[], roundFlags:{}, toast:null,
@@ -257,7 +257,6 @@ function startRound(){
   state.roundLog = [];
   state.roundFlags = {};
   state.turnActionsUsed = 0;
-  state.players.forEach(p=>{ p.lastPlayed = null; });
   if(state.round===1 || (state.round-1)%2===0){
     state.activeEvent = EVENTS[Math.floor(Math.random()*EVENTS.length)];
     applyEvent(state.activeEvent);
@@ -483,7 +482,6 @@ function chooseTarget(targetId){
       state.discard.push(card);
       state.diceResult = { card, def, log, dice: null };
     }
-    human.lastPlayed = card;
     state._activatingFaceDownCard = null;
     state.targetPick = null;
     state.phase = 'DICE_RESULT';
@@ -510,7 +508,6 @@ function chooseTarget(targetId){
   }
 }
 function finishHumanAction(card, def, log, diceResult){
-  state.players[HUMAN_INDEX].lastPlayed = card;
   state.diceResult = { card, def, log, dice: diceResult };
   state.turnActionsUsed++;
   state.phase = 'DICE_RESULT';
@@ -537,7 +534,6 @@ function activateFaceDown(idx){
   const log = [];
   const res = resolveBenefitEffect(card.key, human, log);
   state.discard.push(card);
-  human.lastPlayed = card;
   state.diceResult = { card, def, log, dice: res };
   state.phase = 'DICE_RESULT';
   render();
@@ -585,7 +581,6 @@ function processNextAITurn(){
         const log = [];
         resolveBenefitEffect(card.key, ai, log);
         state.discard.push(card);
-        ai.lastPlayed = card;
         if(log.length) pushLog('💰 '+ai.name+' jugó '+def.name+': '+log.join(', '));
       } else {
         const target = aiPickTarget(ai, def);
@@ -602,13 +597,11 @@ function processNextAITurn(){
           const log = [];
           const res = resolveAttackEffect(card.key, ai, target, log);
           state.discard.push(card);
-          ai.lastPlayed = card;
           pushLog('⚔️ '+ai.name+' usó '+def.name+' contra '+target.name+' (dado '+res.roll+', '+res.outcome+'): '+log.join(', '));
         } else {
           const log = [];
           resolveComunidadEffect(card.key, ai, target, log);
           state.discard.push(card);
-          ai.lastPlayed = card;
           pushLog('🤝 '+ai.name+' usó '+def.name+' con '+target.name+': '+log.join(', '));
         }
       }
@@ -627,7 +620,6 @@ function resolveDefensePrompt(useDefense){
     const didx = human.faceDown.findIndex(c=>CARD_DEFS[c.key].counters===dp.cardKey);
     const defCard = human.faceDown.splice(didx,1)[0];
     state.discard.push(defCard);
-    human.lastPlayed = defCard;
     const log = [];
     if(dp.cardKey==='filtracion'){
       applyDelta(ai, CARD_DEFS['filtracion'].primary, 1, log, ai.name);
@@ -638,7 +630,6 @@ function resolveDefensePrompt(useDefense){
   } else {
     const log = [];
     const res = resolveAttackEffect(dp.cardKey, ai, human, log);
-    ai.lastPlayed = { key: dp.cardKey };
     pushLog('⚔️ '+ai.name+' usó '+def.name+' contra '+human.name+' (dado '+res.roll+', '+res.outcome+'): '+log.join(', '));
     state.toast = ai.name+' te atacó con '+def.name+'.';
   }
@@ -740,11 +731,6 @@ function renderSeat(p, idx){
     fdHtml += '</div>';
   }
 
-  let lastPlayedHtml = '';
-  if(p.lastPlayed){
-    lastPlayedHtml = '<div class="facedown-label">ÚLTIMA CARTA JUGADA</div><div class="facedown-row">'+acardHtml(p.lastPlayed,'mini')+'</div>';
-  }
-
   const flags = [];
   if(p.flags.halfNextCard) flags.push('⚠️ Próxima carta a mitad de efecto');
   const flagsHtml = flags.length ? '<div class="flag-row">'+flags.map(f=>'<span class="flag-chip">'+f+'</span>').join('')+'</div>' : '';
@@ -759,7 +745,7 @@ function renderSeat(p, idx){
     + '<div class="bar"><div class="bar-fill" style="width:'+segPct+'%; background:var(--cyan);"></div></div>'
     + '<div class="stat-line" style="margin-top:4px;"><span class="stat-label">⚖️ Ética</span><span class="led">'+p.etica+'</span></div>'
     + '<div class="bar"><div class="bar-fill" style="width:'+eticaPct+'%; background:var(--pos);"></div></div>'
-    + handHtml + fdHtml + lastPlayedHtml + flagsHtml
+    + handHtml + fdHtml + flagsHtml
     + '</div>';
 }
 
